@@ -216,6 +216,40 @@ static bool output_schedule_frame(struct wlr_output *wlr_output) {
 	return true;
 }
 
+static const struct wlr_format_set *output_get_formats(struct wlr_output *wlr_output) {
+	struct wlr_wl_output *output = get_wl_output_from_output(wlr_output);
+
+	return &output->backend->formats;
+}
+
+static bool output_present(struct wlr_output *wlr_output) {
+	struct wlr_wl_output *output = get_wl_output_from_output(wlr_output);
+	struct wl_buffer *buf = NULL;
+
+	if (wlr_output->image) {
+		buf = wlr_output->image->backend_priv;
+	}
+
+	if (!output->frame_callback) {
+		output->frame_callback = wl_surface_frame(output->surface);
+		wl_callback_add_listener(output->frame_callback, &frame_listener,
+			output);
+	}
+
+	wl_surface_attach(output->surface, buf, 0, 0);
+
+	int n_rects;
+	pixman_box32_t *rects = pixman_region32_rectangles(&wlr_output->damage_2, &n_rects);
+	for (int i = 0; i < n_rects; ++i) {
+		wl_surface_damage_buffer(output->surface, rects[i].x1, rects[i].y1,
+			rects[i].x2 - rects[i].x1, rects[i].y2 - rects[i].y1);
+	}
+
+	wl_surface_commit(output->surface);
+
+	return true;
+}
+
 static const struct wlr_output_impl output_impl = {
 	.set_custom_mode = output_set_custom_mode,
 	.transform = output_transform,
@@ -225,6 +259,8 @@ static const struct wlr_output_impl output_impl = {
 	.set_cursor = output_set_cursor,
 	.move_cursor = output_move_cursor,
 	.schedule_frame = output_schedule_frame,
+	.get_formats = output_get_formats,
+	.present = output_present,
 };
 
 bool wlr_output_is_wl(struct wlr_output *wlr_output) {
