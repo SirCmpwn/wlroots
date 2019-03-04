@@ -1,12 +1,21 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <assert.h>
+#include <fcntl.h>
 #include <stdlib.h>
+#include <unistd.h>
+
+#include <drm_fourcc.h>
+
 #include <wlr/interfaces/wlr_input_device.h>
 #include <wlr/interfaces/wlr_output.h>
+#include <wlr/render/allocator/gbm.h>
 #include <wlr/render/egl.h>
-#include <wlr/render/gles2.h>
+#include <wlr/render/format_set.h>
+#include <wlr/render/wlr_renderer.h>
 #include <wlr/util/log.h>
+
 #include "backend/headless.h"
-#include "glapi.h"
 #include "util/signal.h"
 
 struct wlr_headless_backend *headless_backend_from_backend(
@@ -61,6 +70,9 @@ static void backend_destroy(struct wlr_backend *wlr_backend) {
 
 	wlr_signal_emit_safe(&wlr_backend->events.destroy, backend);
 
+	close(backend->render_fd);
+	wlr_format_set_release(&backend->formats);
+
 	wlr_renderer_destroy(backend->renderer);
 	wlr_egl_finish(&backend->egl);
 	free(backend);
@@ -73,10 +85,27 @@ static struct wlr_renderer *backend_get_renderer(
 	return backend->renderer;
 }
 
+static int backend_get_render_fd(struct wlr_backend *backend) {
+	struct wlr_headless_backend *hl = headless_backend_from_backend(backend);
+	return hl->render_fd;
+}
+
+static bool backend_attach_gbm(struct wlr_backend *backend, struct wlr_gbm_image *gbm) {
+	// We have no native presentation resources
+	return true;
+}
+
+static void backend_detach_gbm(struct wlr_backend *backend, struct wlr_gbm_image *gbm) {
+	// We have no native presentation resources
+}
+
 static const struct wlr_backend_impl backend_impl = {
 	.start = backend_start,
 	.destroy = backend_destroy,
 	.get_renderer = backend_get_renderer,
+	.get_render_fd = backend_get_render_fd,
+	.attach_gbm = backend_attach_gbm,
+	.detach_gbm = backend_detach_gbm,
 };
 
 static void handle_display_destroy(struct wl_listener *listener, void *data) {
@@ -100,6 +129,18 @@ struct wlr_backend *wlr_headless_backend_create(struct wl_display *display,
 	wl_list_init(&backend->outputs);
 	wl_list_init(&backend->input_devices);
 
+	backend->render_fd = open("/dev/dri/renderD128", O_RDWR | O_NONBLOCK | O_CLOEXEC);
+	if (backend->render_fd < 0) {
+		wlr_log_errno(WLR_ERROR, "Failed to open render node");
+		goto error_backend;
+	}
+
+	/*
+	 * TODO: Add a way to get the formats actually supported.
+	 */
+	wlr_format_set_add(&backend->formats, DRM_FORMAT_XRGB8888, DRM_FORMAT_MOD_INVALID);
+	wlr_format_set_add(&backend->formats, DRM_FORMAT_ARGB8888, DRM_FORMAT_MOD_INVALID);
+
 	static const EGLint config_attribs[] = {
 		EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
 		EGL_ALPHA_SIZE, 0,
@@ -117,14 +158,19 @@ struct wlr_backend *wlr_headless_backend_create(struct wl_display *display,
 		EGL_PLATFORM_SURFACELESS_MESA, NULL, (EGLint*)config_attribs, 0);
 	if (!backend->renderer) {
 		wlr_log(WLR_ERROR, "Failed to create renderer");
-		free(backend);
-		return NULL;
+		goto error_fd;
 	}
 
 	backend->display_destroy.notify = handle_display_destroy;
 	wl_display_add_destroy_listener(display, &backend->display_destroy);
 
 	return &backend->backend;
+
+error_fd:
+	close(backend->render_fd);
+error_backend:
+	free(backend);
+	return NULL;
 }
 
 bool wlr_backend_is_headless(struct wlr_backend *backend) {

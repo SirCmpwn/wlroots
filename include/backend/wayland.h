@@ -4,14 +4,16 @@
 #include <stdbool.h>
 
 #include <wayland-client.h>
-#include <wayland-egl.h>
 #include <wayland-server.h>
 #include <wayland-util.h>
 
 #include <wlr/backend/wayland.h>
-#include <wlr/render/egl.h>
+#include <wlr/render/format_set.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_box.h>
+
+#include "linux-dmabuf-unstable-v1-client-protocol.h"
+#include "xdg-shell-client-protocol.h"
 
 struct wlr_wl_backend {
 	struct wlr_backend backend;
@@ -21,8 +23,8 @@ struct wlr_wl_backend {
 	struct wl_display *local_display;
 	struct wl_list devices;
 	struct wl_list outputs;
-	struct wlr_egl egl;
-	struct wlr_renderer *renderer;
+	int render_fd;
+	struct wlr_format_set formats;
 	size_t requested_outputs;
 	struct wl_listener local_display_destroy;
 	/* remote state */
@@ -31,7 +33,7 @@ struct wlr_wl_backend {
 	struct wl_registry *registry;
 	struct wl_compositor *compositor;
 	struct xdg_wm_base *xdg_wm_base;
-	struct wl_shm *shm;
+	struct zwp_linux_dmabuf_v1 *dmabuf;
 	struct wl_seat *seat;
 	struct wl_pointer *pointer;
 	struct wl_keyboard *keyboard;
@@ -45,18 +47,16 @@ struct wlr_wl_output {
 	struct wlr_wl_backend *backend;
 	struct wl_list link;
 
-	struct wl_surface *surface;
 	struct wl_callback *frame_callback;
+
+	struct wl_surface *surface;
 	struct xdg_surface *xdg_surface;
 	struct xdg_toplevel *xdg_toplevel;
-	struct wl_egl_window *egl_window;
-	EGLSurface egl_surface;
 
 	uint32_t enter_serial;
 
 	struct {
 		struct wl_surface *surface;
-		struct wl_egl_window *egl_window;
 		int32_t hotspot_x, hotspot_y;
 		int32_t width, height;
 	} cursor;

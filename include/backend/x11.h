@@ -6,12 +6,14 @@
 #include <X11/Xlib-xcb.h>
 #include <wayland-server.h>
 #include <xcb/xcb.h>
+#include <xcb/present.h>
 
 #include <wlr/backend/x11.h>
 #include <wlr/config.h>
 #include <wlr/interfaces/wlr_input_device.h>
 #include <wlr/interfaces/wlr_output.h>
 #include <wlr/render/egl.h>
+#include <wlr/render/format_set.h>
 #include <wlr/render/wlr_renderer.h>
 
 #define XCB_EVENT_RESPONSE_TYPE_MASK 0x7f
@@ -26,15 +28,20 @@ struct wlr_x11_output {
 	struct wl_list link; // wlr_x11_backend::outputs
 
 	xcb_window_t win;
-	EGLSurface surf;
+	xcb_present_event_t present_id;
+	uint64_t msc;
 
 	struct wlr_pointer pointer;
 	struct wlr_input_device pointer_dev;
 
-	struct wl_event_source *frame_timer;
-	int frame_delay;
-
 	bool cursor_hidden;
+
+	/*
+	 * Images we've waiting to be released.
+	 * The set bits index into images.
+	 */
+	uint8_t serials;
+	struct wlr_image *images[8];
 };
 
 struct wlr_x11_backend {
@@ -52,8 +59,8 @@ struct wlr_x11_backend {
 	struct wlr_keyboard keyboard;
 	struct wlr_input_device keyboard_dev;
 
-	struct wlr_egl egl;
-	struct wlr_renderer *renderer;
+	int render_fd;
+	struct wlr_format_set formats;
 	struct wl_event_source *event_source;
 
 	struct {
@@ -66,7 +73,9 @@ struct wlr_x11_backend {
 	// The time we last received an event
 	xcb_timestamp_t time;
 
+	uint8_t present_opcode;
 	uint8_t xinput_opcode;
+	bool has_dri3_12;
 
 	struct wl_listener display_destroy;
 };
@@ -82,10 +91,9 @@ extern const struct wlr_input_device_impl input_device_impl;
 
 void handle_x11_xinput_event(struct wlr_x11_backend *x11,
 		xcb_ge_generic_event_t *event);
+void handle_x11_present_event(struct wlr_x11_backend *x11,
+		xcb_present_generic_event_t *e);
 void update_x11_pointer_position(struct wlr_x11_output *output,
 	xcb_timestamp_t time);
-
-void handle_x11_configure_notify(struct wlr_x11_output *output,
-	xcb_configure_notify_event_t *event);
 
 #endif

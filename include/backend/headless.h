@@ -3,6 +3,7 @@
 
 #include <wlr/backend/headless.h>
 #include <wlr/backend/interface.h>
+#include <wlr/render/format_set.h>
 
 #define HEADLESS_DEFAULT_REFRESH (60 * 1000) // 60 Hz
 
@@ -14,6 +15,8 @@ struct wlr_headless_backend {
 	struct wl_list outputs;
 	struct wl_list input_devices;
 	struct wl_listener display_destroy;
+	int render_fd;
+	struct wlr_format_set formats;
 	bool started;
 };
 

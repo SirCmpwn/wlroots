@@ -9,12 +9,17 @@
 #ifndef WLR_TYPES_WLR_OUTPUT_H
 #define WLR_TYPES_WLR_OUTPUT_H
 
-#include <pixman.h>
 #include <stdbool.h>
 #include <time.h>
+
+#include <gbm.h>
+#include <EGL/egl.h>
+#include <pixman.h>
 #include <wayland-server.h>
 #include <wayland-util.h>
+
 #include <wlr/render/dmabuf.h>
+#include <wlr/render/format_set.h>
 
 struct wlr_output_mode {
 	uint32_t flags; // enum wl_output_mode
@@ -112,6 +117,13 @@ struct wlr_output {
 
 	// the output position in layout space reported to clients
 	int32_t lx, ly;
+
+	// TODO: Remove _2 suffix once other other damage member is removed
+	pixman_region32_t damage_2;
+	struct wlr_image *image;
+
+	struct gbm_surface *gbm_surface;
+	EGLSurface egl_surface;
 
 	struct wl_listener display_destroy;
 
@@ -261,6 +273,7 @@ bool wlr_output_cursor_move(struct wlr_output_cursor *cursor,
 	double x, double y);
 void wlr_output_cursor_destroy(struct wlr_output_cursor *cursor);
 
+const struct wlr_format_set *wlr_output_get_formats(struct wlr_output *output);
 
 /**
  * Returns the transform that, when composed with `tr`, gives
