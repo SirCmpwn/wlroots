@@ -5,6 +5,7 @@
 #include <wayland-server-core.h>
 #include <wlr/backend/interface.h>
 #include <wlr/backend/libinput.h>
+#include <wlr/config.h>
 #include <wlr/interfaces/wlr_input_device.h>
 #include <wlr/types/wlr_input_device.h>
 #include <wlr/types/wlr_list.h>
@@ -55,6 +56,10 @@ void handle_pointer_button(struct libinput_event *event,
 		struct libinput_device *device);
 void handle_pointer_axis(struct libinput_event *event,
 		struct libinput_device *device);
+#if !WLR_HAS_LIBINPUT_AXIS_V120
+void handle_pointer_axis_legacy(struct libinput_event *event,
+		struct libinput_device *device);
+#endif
 void handle_pointer_swipe_begin(struct libinput_event *event,
 		struct libinput_device *device);
 void handle_pointer_swipe_update(struct libinput_event *event,
