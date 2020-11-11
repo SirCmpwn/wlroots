@@ -14,6 +14,7 @@
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_input_device.h>
+#include <wlr/types/wlr_keyboard.h>
 #include <wlr/types/wlr_tablet_pad.h>
 #include <wlr/types/wlr_tablet_tool.h>
 #include <wlr/util/log.h>
@@ -167,7 +168,7 @@ static void tablet_tool_button_notify(struct wl_listener *listener, void *data) 
 	struct tablet_tool_state *tstate = wl_container_of(listener, tstate, button);
 	struct wlr_event_tablet_tool_button *event = data;
 	struct sample_state *sample = tstate->sample;
-	if (event->state == WLR_BUTTON_RELEASED) {
+	if (event->state == ZWP_TABLET_TOOL_V2_BUTTON_STATE_RELEASED) {
 		sample->button = false;
 	} else {
 		sample->button = true;
@@ -186,7 +187,7 @@ static void tablet_pad_button_notify(struct wl_listener *listener, void *data) {
 	struct wlr_event_tablet_pad_button *event = data;
 	struct sample_state *sample = pstate->sample;
 	float default_color[4] = { 0.5, 0.5, 0.5, 1.0 };
-	if (event->state == WLR_BUTTON_RELEASED) {
+	if (event->state == ZWP_TABLET_PAD_V2_BUTTON_STATE_RELEASED) {
 		memcpy(sample->pad_color, default_color, sizeof(default_color));
 	} else {
 		for (size_t i = 0; i < 3; ++i) {
