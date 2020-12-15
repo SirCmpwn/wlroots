@@ -29,6 +29,7 @@ protocols = {
 	'xdg-decoration-unstable-v1': wl_protocol_dir / 'unstable/xdg-decoration/xdg-decoration-unstable-v1.xml',
 	'xdg-output-unstable-v1': wl_protocol_dir / 'unstable/xdg-output/xdg-output-unstable-v1.xml',
 	# Other protocols
+	'drm-lease': 'drm-lease-unstable-v1.xml',
 	'gtk-primary-selection': 'gtk-primary-selection.xml',
 	'kde-idle': 'idle.xml',
 	'kde-server-decoration': 'server-decoration.xml',
