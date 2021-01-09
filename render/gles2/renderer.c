@@ -476,11 +476,11 @@ static enum wl_shm_format gles2_preferred_read_format(
 }
 
 static bool gles2_read_pixels(struct wlr_renderer *wlr_renderer,
-		enum wl_shm_format wl_fmt, uint32_t *flags, uint32_t stride,
-		uint32_t width, uint32_t height, uint32_t src_x, uint32_t src_y,
+		struct wlr_buffer *buffer, enum wl_shm_format wl_fmt,
+		uint32_t *flags, uint32_t stride, uint32_t width,
+		uint32_t height, uint32_t src_x, uint32_t src_y,
 		uint32_t dst_x, uint32_t dst_y, void *data) {
-	struct wlr_gles2_renderer *renderer =
-		gles2_get_renderer_in_context(wlr_renderer);
+	struct wlr_gles2_renderer *renderer = gles2_get_renderer(wlr_renderer);
 
 	const struct wlr_gles2_pixel_format *fmt = get_gles2_format_from_wl(wl_fmt);
 	if (fmt == NULL) {
@@ -492,6 +492,22 @@ static bool gles2_read_pixels(struct wlr_renderer *wlr_renderer,
 		wlr_log(WLR_ERROR,
 			"Cannot read pixels: missing GL_EXT_read_format_bgra extension");
 		return false;
+	}
+
+	struct wlr_egl_context old_context;
+	wlr_egl_save_context(&old_context);
+
+	if (!wlr_egl_make_current(renderer->egl, EGL_NO_SURFACE, NULL)) {
+		wlr_egl_restore_context(&old_context);
+		return false;
+	}
+
+	if (buffer) {
+		struct wlr_gles2_buffer *gles2_buffer = get_buffer(renderer,
+				buffer);
+		if (gles2_buffer) {
+			glBindFramebuffer(GL_FRAMEBUFFER, gles2_buffer->fbo);
+		}
 	}
 
 	push_gles2_debug(renderer);
@@ -514,7 +530,7 @@ static bool gles2_read_pixels(struct wlr_renderer *wlr_renderer,
 
 		glReadPixels(src_x, y, width, height, fmt->gl_format, fmt->gl_type, p);
 
-		if (renderer->current_buffer != NULL) {
+		if (buffer || renderer->current_buffer) {
 			*flags = 0;
 		} else {
 			*flags = WLR_RENDERER_READ_PIXELS_Y_INVERT;
@@ -524,7 +540,7 @@ static bool gles2_read_pixels(struct wlr_renderer *wlr_renderer,
 		// the lines out row by row
 		for (size_t i = 0; i < height; ++i) {
 			uint32_t y = src_y + i;
-			if (renderer->current_buffer == NULL) {
+			if (buffer || renderer->current_buffer == NULL) {
 				y = renderer->viewport_height - src_y - i - 1;
 			}
 
@@ -539,6 +555,15 @@ static bool gles2_read_pixels(struct wlr_renderer *wlr_renderer,
 
 	pop_gles2_debug(renderer);
 
+	if (buffer) {
+		if (renderer->current_buffer) {
+			glBindFramebuffer(GL_FRAMEBUFFER,
+					renderer->current_buffer->fbo);
+		} else {
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
+	}
+	wlr_egl_restore_context(&old_context);
 	return glGetError() == GL_NO_ERROR;
 }
 

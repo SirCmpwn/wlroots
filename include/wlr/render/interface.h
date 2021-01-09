@@ -43,10 +43,11 @@ struct wlr_renderer_impl {
 	const struct wlr_drm_format_set *(*get_dmabuf_render_formats)(
 		struct wlr_renderer *renderer);
 	enum wl_shm_format (*preferred_read_format)(struct wlr_renderer *renderer);
-	bool (*read_pixels)(struct wlr_renderer *renderer, enum wl_shm_format fmt,
-		uint32_t *flags, uint32_t stride, uint32_t width, uint32_t height,
-		uint32_t src_x, uint32_t src_y, uint32_t dst_x, uint32_t dst_y,
-		void *data);
+	bool (*read_pixels)(struct wlr_renderer *renderer,
+                struct wlr_buffer *buffer, enum wl_shm_format fmt,
+                uint32_t *flags, uint32_t stride, uint32_t width,
+                uint32_t height, uint32_t src_x, uint32_t src_y,
+                uint32_t dst_x, uint32_t dst_y, void *data);
 	struct wlr_texture *(*texture_from_pixels)(struct wlr_renderer *renderer,
 		enum wl_shm_format fmt, uint32_t stride, uint32_t width,
 		uint32_t height, const void *data);
