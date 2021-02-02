@@ -1,15 +1,12 @@
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <errno.h>
-#include <libinput.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <wayland-server-core.h>
-#include <wlr/backend/drm.h>
 #include <wlr/backend/headless.h>
 #include <wlr/backend/interface.h>
-#include <wlr/backend/libinput.h>
 #include <wlr/backend/multi.h>
 #include <wlr/backend/noop.h>
 #include <wlr/backend/session.h>
@@ -21,6 +18,14 @@
 
 #if WLR_HAS_X11_BACKEND
 #include <wlr/backend/x11.h>
+#endif
+
+#if WLR_HAS_LIBINPUT_BACKEND
+#include <wlr/backend/libinput.h>
+#endif
+
+#if WLR_HAS_DRM_BACKEND
+#include <wlr/backend/drm.h>
 #endif
 
 void wlr_backend_init(struct wlr_backend *backend,
@@ -155,6 +160,7 @@ static struct wlr_backend *attempt_noop_backend(struct wl_display *display) {
 	return backend;
 }
 
+#if WLR_HAS_DRM_BACKEND
 static struct wlr_backend *attempt_drm_backend(struct wl_display *display,
 		struct wlr_backend *backend, struct wlr_session *session) {
 	struct wlr_device *gpus[8];
@@ -184,6 +190,7 @@ static struct wlr_backend *attempt_drm_backend(struct wl_display *display,
 
 	return primary_drm;
 }
+#endif
 
 static struct wlr_backend *attempt_backend_by_name(struct wl_display *display,
 		struct wlr_backend *backend, struct wlr_session **session,
@@ -209,9 +216,13 @@ static struct wlr_backend *attempt_backend_by_name(struct wl_display *display,
 		}
 
 		if (strcmp(name, "libinput") == 0) {
+#if WLR_HAS_LIBINPUT_BACKEND
 			return wlr_libinput_backend_create(display, *session);
+#endif
 		} else {
+#if WLR_HAS_DRM_BACKEND
 			return attempt_drm_backend(display, backend, *session);
+#endif
 		}
 	}
 
@@ -289,6 +300,14 @@ struct wlr_backend *wlr_backend_autocreate(struct wl_display *display) {
 #endif
 
 	// Attempt DRM+libinput
+
+#if !WLR_HAS_DRM_BACKEND
+	wlr_log(WLR_ERROR, "wlroots has not been compiled with DRM support");
+	return NULL;
+#elif !WLR_HAS_LIBINPUT_BACKEND
+	wlr_log(WLR_ERROR, "wlroots has not been compiled with libinput support");
+	return NULL;
+#else
 	multi->session = wlr_session_create(display);
 	if (!multi->session) {
 		wlr_log(WLR_ERROR, "Failed to start a DRM session");
@@ -317,6 +336,7 @@ struct wlr_backend *wlr_backend_autocreate(struct wl_display *display) {
 	}
 
 	return backend;
+#endif
 
 error:
 	wlr_backend_destroy(backend);
