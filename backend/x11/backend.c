@@ -339,6 +339,7 @@ static bool query_dri3_formats(struct wlr_x11_backend *x11) {
 
 		const struct wlr_x11_format *format = x11_format_from_depth(depth);
 		if (format != NULL) {
+			// TODO: this assumes implicit modifiers are always supported
 			wlr_drm_format_set_add(&x11->dri3_formats, format->drm,
 				DRM_FORMAT_MOD_INVALID);
 

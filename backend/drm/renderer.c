@@ -189,12 +189,13 @@ void drm_plane_finish_surface(struct wlr_drm_plane *plane) {
 	finish_drm_surface(&plane->mgpu_surf);
 }
 
-static struct wlr_drm_format *create_linear_format(uint32_t format) {
+static struct wlr_drm_format *create_single_mod_format(uint32_t format,
+		uint64_t modifier) {
 	struct wlr_drm_format *fmt = wlr_drm_format_create(format);
 	if (fmt == NULL) {
 		return NULL;
 	}
-	if (!wlr_drm_format_add(&fmt, DRM_FORMAT_MOD_LINEAR)) {
+	if (!wlr_drm_format_add(&fmt, modifier)) {
 		free(fmt);
 		return NULL;
 	}
@@ -204,7 +205,7 @@ static struct wlr_drm_format *create_linear_format(uint32_t format) {
 bool drm_plane_init_surface(struct wlr_drm_plane *plane,
 		struct wlr_drm_backend *drm, int32_t width, uint32_t height,
 		uint32_t format, bool with_modifiers) {
-	if (!wlr_drm_format_set_has(&plane->formats, format, DRM_FORMAT_MOD_INVALID)) {
+	if (wlr_drm_format_set_get(&plane->formats, format) == NULL) {
 		const struct wlr_pixel_format_info *info =
 			drm_get_pixel_format_info(format);
 		if (!info) {
@@ -240,7 +241,8 @@ bool drm_plane_init_surface(struct wlr_drm_plane *plane,
 
 	struct wlr_drm_format *format_implicit_modifier = NULL;
 	if (!with_modifiers) {
-		format_implicit_modifier = wlr_drm_format_create(format);
+		format_implicit_modifier =
+			create_single_mod_format(format, DRM_FORMAT_MOD_INVALID);
 		render_format = format_implicit_modifier;
 	}
 
@@ -261,7 +263,8 @@ bool drm_plane_init_surface(struct wlr_drm_plane *plane,
 		ok = init_drm_surface(&plane->surf, &drm->renderer,
 			width, height, drm_format);
 	} else {
-		struct wlr_drm_format *drm_format_linear = create_linear_format(format);
+		struct wlr_drm_format *drm_format_linear =
+			create_single_mod_format(format, DRM_FORMAT_MOD_LINEAR);
 		if (drm_format_linear == NULL) {
 			free(drm_format);
 			free(format_implicit_modifier);

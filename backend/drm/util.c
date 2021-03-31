@@ -208,6 +208,7 @@ uint32_t get_fb_for_bo(struct gbm_bo *bo, bool with_modifiers) {
 	uint32_t width = gbm_bo_get_width(bo);
 	uint32_t height = gbm_bo_get_height(bo);
 	uint32_t format = gbm_bo_get_format(bo);
+	uint64_t modifier = gbm_bo_get_modifier(bo);
 
 	uint32_t handles[4] = {0};
 	uint32_t strides[4] = {0};
@@ -218,16 +219,23 @@ uint32_t get_fb_for_bo(struct gbm_bo *bo, bool with_modifiers) {
 		strides[i] = gbm_bo_get_stride_for_plane(bo, i);
 		offsets[i] = gbm_bo_get_offset(bo, i);
 		// KMS requires all BO planes to have the same modifier
-		modifiers[i] = gbm_bo_get_modifier(bo);
+		modifiers[i] = modifier;
 	}
 
 	uint32_t id = 0;
-	if (with_modifiers && gbm_bo_get_modifier(bo) != DRM_FORMAT_MOD_INVALID) {
+	if (with_modifiers && modifier != DRM_FORMAT_MOD_INVALID) {
 		if (drmModeAddFB2WithModifiers(fd, width, height, format, handles,
 				strides, offsets, modifiers, &id, DRM_MODE_FB_MODIFIERS)) {
 			wlr_log_errno(WLR_ERROR, "Unable to add DRM framebuffer");
 		}
 	} else {
+		if (modifier != DRM_FORMAT_MOD_INVALID &&
+				modifier != DRM_FORMAT_MOD_LINEAR) {
+			wlr_log(WLR_ERROR, "Cannot import DRM framebuffer with explicit "
+				"modifier 0x%"PRIX64, modifier);
+			return 0;
+		}
+
 		if (drmModeAddFB2(fd, width, height, format, handles, strides,
 				offsets, &id, 0)) {
 			wlr_log_errno(WLR_DEBUG,
