@@ -49,6 +49,10 @@ compositors = {
 		'src': 'fullscreen-shell.c',
 		'proto': ['fullscreen-shell-unstable-v1'],
 	},
+	'scene-graph': {
+		'src': 'scene-graph.c',
+		'proto': ['xdg-shell'],
+	},
 }
 
 clients = {
