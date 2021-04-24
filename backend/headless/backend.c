@@ -4,16 +4,17 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <wlr/config.h>
 #include <wlr/interfaces/wlr_input_device.h>
 #include <wlr/interfaces/wlr_output.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/util/log.h>
 #include <xf86drm.h>
-#include "backend/headless.h"
 #include "render/drm_format_set.h"
-#include "render/gbm_allocator.h"
 #include "render/wlr_renderer.h"
 #include "util/signal.h"
+
+#include "backend/headless.h"
 
 struct wlr_headless_backend *headless_backend_from_backend(
 		struct wlr_backend *wlr_backend) {
@@ -74,7 +75,7 @@ static void backend_destroy(struct wlr_backend *wlr_backend) {
 		wlr_renderer_destroy(backend->renderer);
 	}
 
-	wlr_allocator_destroy(backend->allocator);
+	wlr_allocator_destroy(backend->alloc);
 	close(backend->drm_fd);
 	free(backend);
 }
@@ -119,7 +120,7 @@ static bool backend_init(struct wlr_headless_backend *backend,
 	wl_list_init(&backend->outputs);
 	wl_list_init(&backend->input_devices);
 
-	backend->allocator = allocator;
+	backend->alloc = allocator;
 
 	if (renderer == NULL) {
 		renderer = wlr_renderer_autocreate(&backend->backend);
@@ -201,6 +202,7 @@ out:
 struct wlr_backend *wlr_headless_backend_create(struct wl_display *display) {
 	wlr_log(WLR_INFO, "Creating headless backend");
 
+	struct wlr_allocator *alloc = NULL;
 	struct wlr_headless_backend *backend =
 		calloc(1, sizeof(struct wlr_headless_backend));
 	if (!backend) {
@@ -220,21 +222,21 @@ struct wlr_backend *wlr_headless_backend_create(struct wl_display *display) {
 		goto error_dup;
 	}
 
-	struct wlr_gbm_allocator *gbm_alloc = wlr_gbm_allocator_create(drm_fd);
-	if (gbm_alloc == NULL) {
-		wlr_log(WLR_ERROR, "Failed to create GBM allocator");
+	alloc = wlr_allocator_create_with_drm_fd(drm_fd);
+	if (alloc == NULL) {
+		wlr_log(WLR_ERROR, "Failed to create an allocator");
 		close(drm_fd);
 		goto error_dup;
 	}
 
-	if (!backend_init(backend, display, &gbm_alloc->base, NULL)) {
+	if (!backend_init(backend, display, alloc, NULL)) {
 		goto error_init;
 	}
 
 	return &backend->backend;
 
 error_init:
-	wlr_allocator_destroy(&gbm_alloc->base);
+	wlr_allocator_destroy(alloc);
 error_dup:
 	close(backend->drm_fd);
 error_drm_fd:
@@ -246,6 +248,7 @@ struct wlr_backend *wlr_headless_backend_create_with_renderer(
 		struct wl_display *display, struct wlr_renderer *renderer) {
 	wlr_log(WLR_INFO, "Creating headless backend with parent renderer");
 
+	struct wlr_allocator *alloc = NULL;
 	struct wlr_headless_backend *backend =
 		calloc(1, sizeof(struct wlr_headless_backend));
 	if (!backend) {
@@ -266,14 +269,14 @@ struct wlr_backend *wlr_headless_backend_create_with_renderer(
 		goto error_dup;
 	}
 
-	struct wlr_gbm_allocator *gbm_alloc = wlr_gbm_allocator_create(drm_fd);
-	if (gbm_alloc == NULL) {
-		wlr_log(WLR_ERROR, "Failed to create GBM allocator");
+	alloc = wlr_allocator_create_with_drm_fd(drm_fd);
+	if (alloc == NULL) {
+		wlr_log(WLR_ERROR, "Failed to create an allocator");
 		close(drm_fd);
 		goto error_dup;
 	}
 
-	if (!backend_init(backend, display, &gbm_alloc->base, renderer)) {
+	if (!backend_init(backend, display, alloc, renderer)) {
 		goto error_init;
 	}
 
@@ -283,7 +286,7 @@ struct wlr_backend *wlr_headless_backend_create_with_renderer(
 	return &backend->backend;
 
 error_init:
-	wlr_allocator_destroy(&gbm_alloc->base);
+	wlr_allocator_destroy(alloc);
 error_dup:
 	close(backend->drm_fd);
 error_drm_fd:

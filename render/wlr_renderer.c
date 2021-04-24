@@ -1,13 +1,17 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <wlr/config.h>
+
+#if WLR_HAS_GBM_SUPPORT
+#include <gbm.h>
+#endif
+
 #include <wlr/render/interface.h>
 #include <wlr/render/pixman.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/util/log.h>
-
-#include <wlr/config.h>
 
 #if WLR_HAS_GLES2_RENDERER
 #include <wlr/render/egl.h>

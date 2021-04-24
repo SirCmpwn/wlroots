@@ -86,7 +86,11 @@ else
 endif
 
 features = {
+	'drm-backend': false,
+	'gbm-support': false,
+	'latest-gbm': false,
 	'x11-backend': false,
+	'libinput-backend': false,
 	'xwayland': false,
 	'gles2-renderer': false,
 }
@@ -98,8 +102,8 @@ wayland_server = dependency('wayland-server', version: '>=1.19')
 wayland_client = dependency('wayland-client')
 wayland_protos = dependency('wayland-protocols', version: '>=1.17')
 drm = dependency('libdrm', version: '>=2.4.95')
-gbm = dependency('gbm', version: '>=17.1.0')
-libinput = dependency('libinput', version: '>=1.14.0')
+# Only needed for drm_fourcc.h
+drm_headers = drm.partial_dependency(compile_args: true, includes: true)
 xkbcommon = dependency('xkbcommon')
 udev = dependency('libudev')
 pixman = dependency('pixman-1')
@@ -113,8 +117,6 @@ wlr_deps = [
 	wayland_client,
 	wayland_protos,
 	drm,
-	gbm,
-	libinput,
 	xkbcommon,
 	udev,
 	pixman,
