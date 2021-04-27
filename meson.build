@@ -99,6 +99,7 @@ wayland_client = dependency('wayland-client')
 wayland_protos = dependency('wayland-protocols', version: '>=1.17')
 drm = dependency('libdrm', version: '>=2.4.95')
 gbm = dependency('gbm', version: '>=17.1.0')
+liftoff = dependency('libliftoff', fallback: ['libliftoff', 'liftoff'])
 libinput = dependency('libinput', version: '>=1.14.0')
 xkbcommon = dependency('xkbcommon')
 udev = dependency('libudev')
@@ -114,6 +115,7 @@ wlr_deps = [
 	wayland_protos,
 	drm,
 	gbm,
+	liftoff,
 	libinput,
 	xkbcommon,
 	udev,
