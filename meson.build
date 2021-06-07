@@ -94,8 +94,16 @@ internal_features = {
 	'xcb-errors': false,
 }
 
-wayland_server = dependency('wayland-server', version: '>=1.19')
-wayland_client = dependency('wayland-client')
+wayland_project_options = ['tests=false', 'documentation=false']
+wayland_server = dependency('wayland-server',
+	version: '>=1.19',
+	fallback: ['wayland', 'wayland_server_dep'],
+	default_options: wayland_project_options,
+)
+wayland_client = dependency('wayland-client',
+	fallback: ['wayland', 'wayland_client_dep'],
+	default_options: wayland_project_options,
+)
 drm = dependency('libdrm', version: '>=2.4.95')
 gbm = dependency('gbm', version: '>=17.1.0')
 libinput = dependency('libinput', version: '>=1.14.0')
