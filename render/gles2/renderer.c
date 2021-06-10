@@ -13,7 +13,6 @@
 #include <wlr/render/interface.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_matrix.h>
-#include <wlr/types/wlr_linux_dmabuf_v1.h>
 #include <wlr/util/log.h>
 #include "render/gles2.h"
 #include "render/pixel_format.h"
@@ -504,10 +503,6 @@ static bool gles2_init_wl_display(struct wlr_renderer *wlr_renderer,
 		}
 	} else {
 		wlr_log(WLR_INFO, "EGL_WL_bind_wayland_display is not supported");
-	}
-
-	if (wlr_linux_dmabuf_v1_create(wl_display, wlr_renderer) == NULL) {
-		return false;
 	}
 
 	return true;

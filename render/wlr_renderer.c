@@ -4,6 +4,7 @@
 #include <wlr/render/interface.h>
 #include <wlr/render/pixman.h>
 #include <wlr/render/wlr_renderer.h>
+#include <wlr/types/wlr_linux_dmabuf_v1.h>
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/util/log.h>
 
@@ -207,17 +208,18 @@ bool wlr_renderer_read_pixels(struct wlr_renderer *r, uint32_t fmt,
 		src_x, src_y, dst_x, dst_y, data);
 }
 
-bool wlr_renderer_init_wl_display(struct wlr_renderer *r,
+bool wlr_renderer_init_wl_shm(struct wlr_renderer *r,
 		struct wl_display *wl_display) {
-	if (wl_display_init_shm(wl_display)) {
-		wlr_log(WLR_ERROR, "Failed to initialize shm");
+	if (wl_display_init_shm(wl_display) != 0) {
+		wlr_log(WLR_ERROR, "Failed to initialize wl_shm");
 		return false;
 	}
 
 	size_t len;
 	const uint32_t *formats = wlr_renderer_get_shm_texture_formats(r, &len);
 	if (formats == NULL) {
-		wlr_log(WLR_ERROR, "Failed to initialize shm: cannot get formats");
+		wlr_log(WLR_ERROR, "Failed to initialize wl_shm: "
+			"cannot get renderer formats");
 		return false;
 	}
 
@@ -234,10 +236,29 @@ bool wlr_renderer_init_wl_display(struct wlr_renderer *r,
 			xrgb8888 = true;
 			break;
 		default:
-			wl_display_add_shm_format(wl_display, fmt);
+			if (wl_display_add_shm_format(wl_display, fmt) == NULL) {
+				wlr_log(WLR_ERROR, "Failed to initialize wl_shm: "
+					"failed to add format");
+				return false;
+			}
 		}
 	}
 	assert(argb8888 && xrgb8888);
+
+	return true;
+}
+
+bool wlr_renderer_init_wl_display(struct wlr_renderer *r,
+		struct wl_display *wl_display) {
+	if (!wlr_renderer_init_wl_shm(r, wl_display)) {
+		return false;
+	}
+
+	if (wlr_renderer_get_dmabuf_texture_formats(r) != NULL) {
+		if (wlr_linux_dmabuf_v1_create(wl_display, r) == NULL) {
+			return false;
+		}
+	}
 
 	if (r->impl->init_wl_display) {
 		if (!r->impl->init_wl_display(r, wl_display)) {
