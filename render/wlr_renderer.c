@@ -14,6 +14,10 @@
 #include <wlr/render/gles2.h>
 #endif
 
+#if WLR_HAS_VULKAN_RENDERER
+#include <wlr/render/vulkan.h>
+#endif // WLR_HAS_VULKAN_RENDERER
+
 #include "util/signal.h"
 #include "render/pixel_format.h"
 #include "render/wlr_renderer.h"
@@ -262,6 +266,11 @@ struct wlr_renderer *renderer_autocreate_with_drm_fd(int drm_fd) {
 				return NULL;
 			}
 			return wlr_gles2_renderer_create_with_drm_fd(drm_fd);
+		}
+#endif
+#if WLR_HAS_VULKAN_RENDERER
+		if (strcmp(name, "vulkan") == 0) {
+			return wlr_vk_renderer_create_with_drm_fd(drm_fd);
 		}
 #endif
 		if (strcmp(name, "pixman") == 0) {

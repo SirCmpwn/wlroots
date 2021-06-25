@@ -89,6 +89,7 @@ features = {
 	'x11-backend': false,
 	'xwayland': false,
 	'gles2-renderer': false,
+	'vulkan-renderer': false,
 }
 internal_features = {
 	'xcb-errors': false,
