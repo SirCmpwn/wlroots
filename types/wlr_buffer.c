@@ -72,13 +72,13 @@ bool wlr_buffer_get_dmabuf(struct wlr_buffer *buffer,
 	return buffer->impl->get_dmabuf(buffer, attribs);
 }
 
-bool buffer_begin_data_ptr_access(struct wlr_buffer *buffer, void **data,
-		uint32_t *format, size_t *stride) {
+bool buffer_begin_data_ptr_access(struct wlr_buffer *buffer, uint32_t flags,
+		void **data, uint32_t *format, size_t *stride) {
 	assert(!buffer->accessing_data_ptr);
 	if (!buffer->impl->begin_data_ptr_access) {
 		return false;
 	}
-	if (!buffer->impl->begin_data_ptr_access(buffer, data, format, stride)) {
+	if (!buffer->impl->begin_data_ptr_access(buffer, flags, data, format, stride)) {
 		return false;
 	}
 	buffer->accessing_data_ptr = true;
@@ -369,7 +369,7 @@ static void shm_client_buffer_destroy(struct wlr_buffer *wlr_buffer) {
 }
 
 static bool shm_client_buffer_begin_data_ptr_access(struct wlr_buffer *wlr_buffer,
-		void **data, uint32_t *format, size_t *stride) {
+		uint32_t flags, void **data, uint32_t *format, size_t *stride) {
 	struct wlr_shm_client_buffer *buffer =
 		shm_client_buffer_from_buffer(wlr_buffer);
 	*format = buffer->format;
