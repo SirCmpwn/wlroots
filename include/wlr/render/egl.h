@@ -43,6 +43,7 @@ struct wlr_egl {
 
 		// Device extensions
 		bool device_drm_ext;
+		bool device_drm_render_node_ext;
 	} exts;
 
 	struct {
