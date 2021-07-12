@@ -67,9 +67,6 @@ static bool output_commit(struct wlr_output *wlr_output) {
 	}
 
 	if (wlr_output->pending.committed & WLR_OUTPUT_STATE_BUFFER) {
-		assert(wlr_output->pending.buffer_type ==
-			WLR_OUTPUT_STATE_BUFFER_SCANOUT);
-
 		wlr_buffer_unlock(output->front_buffer);
 		output->front_buffer = wlr_buffer_lock(wlr_output->pending.buffer);
 
