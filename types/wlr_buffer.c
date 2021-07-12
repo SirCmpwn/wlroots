@@ -157,6 +157,27 @@ static bool buffer_is_shm_client_buffer(struct wlr_buffer *buffer);
 static struct wlr_shm_client_buffer *shm_client_buffer_from_buffer(
 	struct wlr_buffer *buffer);
 
+static struct wl_array impls = {0}; // struct wlr_buffer_resource_impls
+
+void wlr_buffer_register_resource_impl(
+		const struct wlr_buffer_resource_impl *impl) {
+	assert(impl);
+	assert(impl->is_instance);
+	assert(impl->from_resource);
+
+	const struct wlr_buffer_resource_impl **impl_ptr;
+	wl_array_for_each(impl_ptr, &impls) {
+		if (*impl_ptr == impl) {
+			wlr_log(WLR_DEBUG, "wlr_resource_buffer_impl has already been "
+					"registered");
+			return;
+		}
+	}
+
+	impl_ptr = wl_array_add(&impls, sizeof(impl));
+	*impl_ptr = impl;
+}
+
 struct wlr_buffer *wlr_buffer_from_resource(struct wl_resource *resource) {
 	assert(resource && wlr_resource_is_buffer(resource));
 
