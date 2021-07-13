@@ -119,6 +119,12 @@ wlr_deps = [
 	rt,
 ]
 
+# libinput hold gestures are available since 1.19rc1 (1.18.900)
+add_project_arguments(
+	'-DLIBINPUT_HAS_HOLD_GESTURES=@0@'.format(libinput.version().version_compare('>=1.18.900').to_int()),
+	language: 'c',
+)
+
 subdir('protocol')
 subdir('render')
 
