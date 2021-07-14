@@ -178,6 +178,18 @@ void wlr_buffer_register_resource_impl(
 	*impl_ptr = impl;
 }
 
+static struct wlr_buffer_resource_impl *get_buffer_resource_impl(
+		struct wl_resource *resource) {
+	struct wlr_buffer_resource_impl **impl_ptr;
+	wl_array_for_each(impl_ptr, &impls) {
+		if ((*impl_ptr)->is_instance(resource)) {
+			return *impl_ptr;
+		}
+	}
+
+	return NULL;
+}
+
 struct wlr_buffer *wlr_buffer_from_resource(struct wl_resource *resource) {
 	assert(resource && wlr_resource_is_buffer(resource));
 
@@ -202,8 +214,20 @@ struct wlr_buffer *wlr_buffer_from_resource(struct wl_resource *resource) {
 			wlr_drm_buffer_from_resource(resource);
 		buffer = wlr_buffer_lock(&drm_buffer->base);
 	} else {
-		wlr_log(WLR_ERROR, "Unknown buffer type");
-		return NULL;
+		struct wlr_buffer_resource_impl *impl =
+				get_buffer_resource_impl(resource);
+		if (!impl) {
+			wlr_log(WLR_ERROR, "Unknown buffer type");
+			return NULL;
+		}
+
+		struct wlr_buffer *custom_buffer = impl->from_resource(resource);
+		if (!custom_buffer) {
+			wlr_log(WLR_ERROR, "Failed to create custom buffer");
+			return NULL;
+		}
+
+		buffer = wlr_buffer_lock(custom_buffer);
 	}
 
 	return buffer;
