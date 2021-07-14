@@ -7,7 +7,6 @@
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
 #include <wlr/util/log.h>
 #include "render/pixel_format.h"
-#include "render/wlr_texture.h"
 #include "types/wlr_buffer.h"
 #include "util/signal.h"
 
@@ -157,8 +156,40 @@ static bool buffer_is_shm_client_buffer(struct wlr_buffer *buffer);
 static struct wlr_shm_client_buffer *shm_client_buffer_from_buffer(
 	struct wlr_buffer *buffer);
 
-struct wlr_buffer *wlr_buffer_from_resource(struct wlr_renderer *renderer,
+static struct wl_array impls = {0}; // struct wlr_buffer_resource_impls
+
+void wlr_buffer_register_resource_impl(
+		const struct wlr_buffer_resource_impl *impl) {
+	assert(impl);
+	assert(impl->is_instance);
+	assert(impl->from_resource);
+
+	const struct wlr_buffer_resource_impl **impl_ptr;
+	wl_array_for_each(impl_ptr, &impls) {
+		if (*impl_ptr == impl) {
+			wlr_log(WLR_DEBUG, "wlr_resource_buffer_impl has already been "
+					"registered");
+			return;
+		}
+	}
+
+	impl_ptr = wl_array_add(&impls, sizeof(impl));
+	*impl_ptr = impl;
+}
+
+static struct wlr_buffer_resource_impl *get_buffer_resource_impl(
 		struct wl_resource *resource) {
+	struct wlr_buffer_resource_impl **impl_ptr;
+	wl_array_for_each(impl_ptr, &impls) {
+		if ((*impl_ptr)->is_instance(resource)) {
+			return *impl_ptr;
+		}
+	}
+
+	return NULL;
+}
+
+struct wlr_buffer *wlr_buffer_from_resource(struct wl_resource *resource) {
 	assert(resource && wlr_resource_is_buffer(resource));
 
 	struct wlr_buffer *buffer;
@@ -182,8 +213,20 @@ struct wlr_buffer *wlr_buffer_from_resource(struct wlr_renderer *renderer,
 			wlr_drm_buffer_from_resource(resource);
 		buffer = wlr_buffer_lock(&drm_buffer->base);
 	} else {
-		wlr_log(WLR_ERROR, "Unknown buffer type");
-		return NULL;
+		struct wlr_buffer_resource_impl *impl =
+				get_buffer_resource_impl(resource);
+		if (!impl) {
+			wlr_log(WLR_ERROR, "Unknown buffer type");
+			return NULL;
+		}
+
+		struct wlr_buffer *custom_buffer = impl->from_resource(resource);
+		if (!custom_buffer) {
+			wlr_log(WLR_ERROR, "Failed to create custom buffer");
+			return NULL;
+		}
+
+		buffer = wlr_buffer_lock(custom_buffer);
 	}
 
 	return buffer;
