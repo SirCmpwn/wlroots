@@ -10,6 +10,7 @@
 #define WLR_TYPES_WLR_TEXT_INPUT_V3_H
 
 #include <wayland-server-core.h>
+#include <wlr/types/wlr_box.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_surface.h>
 
@@ -33,12 +34,7 @@ struct wlr_text_input_v3_state {
 		uint32_t purpose;
 	} content_type;
 
-	struct {
-		int32_t x;
-		int32_t y;
-		int32_t width;
-		int32_t height;
-	} cursor_rectangle;
+	struct wlr_box cursor_rectangle;
 
 	// Tracks which features were used in the current commit.
 	// Useful in the enabling commit, where usage means support.
