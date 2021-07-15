@@ -470,9 +470,10 @@ static bool drm_connector_test(struct wlr_output *output) {
 		if (!drm_connector_set_pending_fb(conn, &output->pending)) {
 			return false;
 		}
-		if (!drm_crtc_commit(conn, &output->pending, 0, true)) {
-			return false;
-		}
+	}
+
+	if (!drm_crtc_commit(conn, &output->pending, 0, true)) {
+		return false;
 	}
 
 	return true;
