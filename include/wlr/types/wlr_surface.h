@@ -27,6 +27,7 @@ enum wlr_surface_state_field {
 	WLR_SURFACE_STATE_SCALE = 1 << 6,
 	WLR_SURFACE_STATE_FRAME_CALLBACK_LIST = 1 << 7,
 	WLR_SURFACE_STATE_VIEWPORT = 1 << 8,
+	WLR_SURFACE_STATE_OFFSET = 1 << 9,
 };
 
 struct wlr_surface_state {
@@ -151,6 +152,8 @@ struct wlr_surface {
 	struct wl_list current_outputs; // wlr_surface_output::link
 
 	struct wl_listener renderer_destroy;
+
+	bool has_pending_attach_offset;
 
 	void *data;
 };
