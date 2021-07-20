@@ -11,11 +11,11 @@
 #include <wlr/config.h>
 
 #if WLR_HAS_GLES2_RENDERER
-#include <wlr/render/egl.h>
 #include <wlr/render/gles2.h>
 #endif
 
 #include "util/signal.h"
+#include "render/egl.h"
 #include "render/pixel_format.h"
 #include "render/wlr_renderer.h"
 
