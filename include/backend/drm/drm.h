@@ -20,9 +20,7 @@ struct wlr_drm_plane {
 	uint32_t type;
 	uint32_t id;
 
-	/* Local if this isn't a multi-GPU setup, on the parent otherwise. */
-	struct wlr_drm_surface surf;
-	/* Local, only initialized on multi-GPU setups. */
+	/* Only initialized on multi-GPU setups */
 	struct wlr_drm_surface mgpu_surf;
 
 	/* Buffer to be submitted to the kernel on the next page-flip */
@@ -64,6 +62,7 @@ struct wlr_drm_backend {
 	int fd;
 	char *name;
 	struct wlr_device *dev;
+	struct gbm_device *gbm;
 
 	size_t num_crtcs;
 	struct wlr_drm_crtc *crtcs;
@@ -81,7 +80,9 @@ struct wlr_drm_backend {
 	struct wl_list fbs; // wlr_drm_fb.link
 	struct wl_list outputs;
 
-	struct wlr_drm_renderer renderer;
+	/* Only initialized on multi-GPU setups */
+	struct wlr_drm_renderer mgpu_renderer;
+
 	struct wlr_session *session;
 
 	uint64_t cursor_width, cursor_height;

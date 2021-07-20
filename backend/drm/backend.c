@@ -11,6 +11,7 @@
 #include <wlr/interfaces/wlr_output.h>
 #include <wlr/util/log.h>
 #include <xf86drm.h>
+#include "backend/backend.h"
 #include "backend/drm/drm.h"
 #include "util/signal.h"
 
@@ -52,24 +53,18 @@ static void backend_destroy(struct wlr_backend *backend) {
 	wl_list_remove(&drm->dev_change.link);
 	wl_list_remove(&drm->dev_remove.link);
 
+	gbm_device_destroy(drm->gbm);
+
+	if (drm->parent) {
+		finish_drm_renderer(&drm->mgpu_renderer);
+	}
+
 	finish_drm_resources(drm);
-	finish_drm_renderer(&drm->renderer);
 
 	free(drm->name);
 	wlr_session_close_file(drm->session, drm->dev);
 	wl_event_source_remove(drm->drm_event);
 	free(drm);
-}
-
-static struct wlr_renderer *backend_get_renderer(
-		struct wlr_backend *backend) {
-	struct wlr_drm_backend *drm = get_drm_backend_from_backend(backend);
-
-	if (drm->parent) {
-		return drm->parent->renderer.wlr_rend;
-	} else {
-		return drm->renderer.wlr_rend;
-	}
 }
 
 static clockid_t backend_get_presentation_clock(struct wlr_backend *backend) {
@@ -87,17 +82,16 @@ static int backend_get_drm_fd(struct wlr_backend *backend) {
 	}
 }
 
-static uint32_t backend_get_buffer_caps(struct wlr_backend *backend) {
+static uint32_t drm_backend_get_buffer_caps(struct wlr_backend *backend) {
 	return WLR_BUFFER_CAP_DMABUF;
 }
 
 static const struct wlr_backend_impl backend_impl = {
 	.start = backend_start,
 	.destroy = backend_destroy,
-	.get_renderer = backend_get_renderer,
 	.get_presentation_clock = backend_get_presentation_clock,
 	.get_drm_fd = backend_get_drm_fd,
-	.get_buffer_caps = backend_get_buffer_caps,
+	.get_buffer_caps = drm_backend_get_buffer_caps,
 };
 
 bool wlr_backend_is_drm(struct wlr_backend *b) {
@@ -230,15 +224,27 @@ struct wlr_backend *wlr_drm_backend_create(struct wl_display *display,
 		goto error_event;
 	}
 
-	if (!init_drm_renderer(drm, &drm->renderer)) {
-		wlr_log(WLR_ERROR, "Failed to initialize renderer");
+	drm->gbm = gbm_create_device(drm->fd);
+	if (!drm->gbm) {
+		wlr_log(WLR_ERROR, "Failed to create GBM device");
+		goto error_event;
+	}
+
+	struct wlr_renderer *renderer = wlr_backend_get_renderer(&drm->backend);
+	struct wlr_allocator *allocator = backend_get_allocator(&drm->backend);
+	if (renderer == NULL || allocator == NULL) {
 		goto error_event;
 	}
 
 	if (drm->parent) {
+		if (!init_drm_renderer(drm, &drm->mgpu_renderer)) {
+			wlr_log(WLR_ERROR, "Failed to initialize renderer");
+			goto error_event;
+		}
+
 		// We'll perform a multi-GPU copy for all submitted buffers, we need
 		// to be able to texture from them
-		struct wlr_renderer *renderer = drm->renderer.wlr_rend;
+		struct wlr_renderer *renderer = drm->mgpu_renderer.wlr_rend;
 		const struct wlr_drm_format_set *texture_formats =
 			wlr_renderer_get_dmabuf_texture_formats(renderer);
 		if (texture_formats == NULL) {
